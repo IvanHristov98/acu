@@ -1,0 +1,172 @@
+x := {0.686143985,
+   0.307313184,
+   10.20588166,
+   -9.235730337,
+   0.277144172,
+   0.652333397,
+   2.819218128,
+   -1.006468208,
+   10.10396889,
+   -1.605962585,
+   0.246794337,
+   0.706211903,
+   7.728566894,
+   2.053861069,
+   5.742237957,
+   1.604557037,
+   1.029262184,
+   0.041407842,
+   2.730162016,
+   -2.924918942,
+   -2.924918942,
+   10.18267071,
+   3.908533423,
+   -4.59854197,
+   -1.674747469,
+   10.04636598,
+   7.685992297
+   };
+
+y := {9.693013241,
+   -9.555131822,
+   0.146627372,
+   0.149835656,
+   -0.108499369,
+   0.026782191,
+   0.00984892,
+   0.586054944,
+   0.089937928,
+   0.058272144,
+   1.126126555,
+   -3.139230967,
+   0.248629672,
+   -2.927665847,
+   0.041531765,
+   0.951821853,
+   1.996550095,
+   -2.516368282,
+   -8.137597633,
+   -6.411393964,
+   -6.411393964,
+   0.144573621,
+   -8.83618239,
+   -8.151722848,
+   9.466063897,
+   1.799748205,
+   6.529638446
+   };
+
+z := {0.146230973,
+   0.121707371,
+   0.293913142,
+   -0.153514714,
+   9.72381854,
+   -9.867581581,
+   9.453752615,
+   9.610065897,
+   -1.625049867,
+   -9.639987664,
+   9.709396155,
+   -9.302827738,
+   6.471431237,
+   9.11283197,
+   8.152279472,
+   -9.754449668,
+   9.543562547,
+   9.358991009,
+   -4.711984149,
+   6.335544161,
+   6.335544161,
+   0.312617999,
+   -1.558956159,
+   0.065404421,
+   0.036135226,
+   0.246702889,
+   0.083514447
+   };
+
+g := 9.80665
+errors = Table[
+   g - Sqrt[(m11*x[[i]] + m12*y[[i]] + m13*z[[i]] + 
+        b1)^2 + (m21*x[[i]] + m22*y[[i]] + m23*z[[i]] + 
+        b2)^2 + (m31*x[[i]] + m32*y[[i]] + m33*z[[i]] + b3)^2], {i, 1,
+     Length[x]}];
+
+sum = \!\(
+\*UnderoverscriptBox[\(\[Sum]\), \(i = 1\), \(Length[errors]\)]
+\*SuperscriptBox[\(errors[\([\)\(i\)\(]\)]\), \(2\)]\);
+gradient = {D[sum, m11], D[sum, m12], D[sum, m13], D[sum, b1], 
+   D[sum, m21], D[sum, m22], D[sum, m23], D[sum, b2], D[sum, m31], 
+   D[sum, m32], D[sum, m33], D[sum, b3]};
+(*Used to calculate a single index in a vector of functions, the \
+result is a scalar*)
+calcVecFunc[func_, nodes_] := (
+   Return[
+     (func) /. {
+       b1 -> nodes[[1]], b2 -> nodes[[2]], b3 -> nodes[[3]],
+       m11 -> nodes[[4]], m12 -> nodes[[5]], m13 -> nodes[[6]],
+       m21 -> nodes[[7]], m22 -> nodes[[8]], m23 -> nodes[[9]],
+       m31 -> nodes[[10]], m32 -> nodes[[11]], m33 -> nodes[[12]]
+       }
+     ];
+   );
+(*Used to calculate the values of the functions in a vector of \
+functions, the result is a vector*)
+calcVec[vector_, nodes_] := (
+   resultingVec = {};
+   For[i = 1, i <= 12, i++, (
+     AppendTo[resultingVec, calcVecFunc[vector[[i]], nodes]];
+     )];
+   Return[resultingVec];
+   );
+(*Strong vector comparison*)
+compareRightVecsStrongly[vec1_, vec2_, vecSize_, isAbs_] := (
+   For[j = 0, j <= vecSize, j++, (
+     If[! isAbs,
+       If[vec1[[j]] <= vec2[[j]], Return[False];],
+       If[Abs[vec1[[j]]] <= Abs[vec2[[j]]], Return[False];]
+       ];
+     )];
+   Return[True];
+   );
+getMagnitude[vec_] := (
+   magnitude = 0;
+   For[m = 1, m <= Length[vec], m++, magnitude += vec[[m]]^2];
+   Return[Sqrt[magnitude]];
+   );
+(*Gradient descent implementation for 12 variables*)
+gradientDescent[func_, prev_, eps_, leftBoundary_, rightBoundary_] := (
+   gamma = 1;
+   pr = prev;
+   next = pr + 2*eps;
+   cnt = 0;
+   
+   While[getMagnitude[Abs[next - pr]] > eps,
+    If[cnt == 0, pr = prev, pr = next];
+    gamma = 1;
+    next = pr - gamma*calcVec[gradient, pr];
+    While[
+     calcVecFunc[func, next] >= calcVecFunc[func, pr] && 
+      getMagnitude[Abs[next - pr]] > eps,
+     gamma /= 2;
+     next = pr - gamma*calcVec[gradient, pr];
+     ];
+    
+    If[compareRightVecsStrongly[leftBoundary, pr, Length[pr]] && 
+      compareRightVecsStrongly[leftBoundary, next, Length[next]], 
+     Return[leftBoundary]];
+    If[compareRightVecsStrongly[pr, rightBoundary, Length[pr]] && 
+      compareRightVecsStrongly[next, rightBoundary, Length[next]], 
+     Return[rightBoundary]];
+    
+    cnt++;
+    ];
+   Return[next];
+   );
+(*P={-0.442083,-0.194724,0.109717,0.964536,-0.286181,0.0806076,0.\
+277847,0.975382,0.0751798,-0.0957655,-0.0532927,0.994058};*)
+P = {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+leftBoundary = Table[-1000, {i, 1, 12}];
+rightBoundary = Table[1000, {i, 1, 12}];
+sol = gradientDescent[sum, P, 10^-50, leftBoundary, rightBoundary]
+calcVecFunc[sum, sol ]
